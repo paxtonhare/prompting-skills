@@ -1,83 +1,111 @@
 ---
 name: fable-prompting
-description: Prompting guidance for Claude Fable 5.1 (claude-fable-5-1, anthropic/claude-fable-5-1, also Mythos 5.1). Use when writing or revising a prompt, subagent task, system prompt, or agent harness that Fable will run, or when Fable stops early, widens scope, rewrites whole files, or goes quiet.
+description: Prompting guidance for Claude Fable 5.2 (claude-fable-5-2, anthropic/claude-fable-5-2, also Mythos 5.2). Use when writing or revising a prompt, subagent task, system prompt, or agent harness that Fable will run, or when Fable stops early, widens scope, rewrites whole files, or goes quiet.
 ---
 
-# Prompting Claude Fable 5.1
+# Prompting Claude Fable 5.2
 
-Source, read 2026-09-25:
-https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1
+Source, read 2026-11-10:
+https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-2
 
 Anthropic's tested wording lives in [references/snippets.md](references/snippets.md).
-Use it near-verbatim; add only the snippets the task needs. Fable 5 prompts
-still work, so prune before you add.
+Use it verbatim as a starting point; add only the snippets the task needs.
+Prune inherited instructions before adding more.
 
-## How Fable 5.1 differs
+## How Fable 5.2 differs
 
-- Runs very long tasks with little methodology guidance when the goal is clear.
-- Can end the turn early: announces "Next, I'll…" instead of doing it, or asks
-  "Shall I apply this?" for work already requested.
-- Delivers more than asked: fixes nearby code, extends behavior, commits extra
-  test files.
-- Rewrites whole files for small changes.
-- Writes fewer progress updates during long tool chains, more so at high effort.
-- Issues one tool call per turn in coding and computer-use loops when the next
-  calls are implied rather than named.
-- Prose runs denser; chat replies use less structure than older models.
-- Reproduces source wording in summaries without marking it as a quote.
-- At `low` effort, searches less and answers from memory more.
-- At `xhigh` and `max`, may draft a long deliverable in thinking, then again in
-  the reply.
-- Safety classifiers can return `stop_reason: "refusal"` on benign coding work.
+- Can stop with doable work left, especially at `low` and `medium` effort.
+- Without ownership language, tends to add to existing structure and report
+  nearby bugs instead of fixing them. Treating code as its own encourages
+  consolidation and nearby fixes, but also unrequested changes and higher cost.
+- Follows approval rules and accumulated cautions closely; broad prohibitions
+  can block routine work even after a separate approval.
+- May go quiet during tool chains; progress updates are `thinking` blocks,
+  empty at the default `thinking.display: "omitted"`.
+- Delegation depends on the harness. Prompts inviting subagents can cause
+  substantial use; at `xhigh`/`max`, it may delegate reviews of its own work.
+- At `high` and above, thinks before almost every reply, even greetings.
+  "Answer directly without deliberating" does not stop thinking at `medium`+.
+- Follows style rules closely; rigid sentence limits can make reports choppy.
+- Safety classifiers return categorized refusals; Mythos 5.2 has the same
+  capabilities, available only to organizations in the verification programs.
 
 ## Writing a task prompt
 
-1. **Give the goal and done condition.** A clear goal matters more than a
-   method. Skip step-by-step recipes.
-2. **If it will run unattended, say so.** Use the "Finish the whole task"
-   snippet. Its first sentence (the user is not watching) carries most of the
-   effect; keep it as written. List any confirmations you still want right
-   after it.
-3. **Fix the scope.** Use "Delivering work" for open-ended tasks and "Keep
-   changes and tests to the task" for coding. Unrequested fixes become
-   follow-ups in the summary.
-4. **Ask for targeted edits** on code or long files.
-5. **Name the updates you want** (one-line intent up front, short recap at the
-   end) for human-in-the-loop work. Remove any "hold findings for the final
-   response" lines.
-6. **For prose deliverables,** add "Please remove all mannered prose." For chat,
-   replace blanket anti-formatting rules with the formatting rule snippet.
-7. **Avoid refusal triggers.** Ask "Are there any bugs in this program?" rather
-   than "Does this compile without errors?" Give docs for lesser-known
-   languages. Keep base64 out of tool output.
-8. **Push searching when names may be new or fast-moving,** especially at low
-   effort.
+1. **Give the goal and done condition.** Add the "Finishing work" block when
+   turns stop early, especially for agentic work at `low`/`medium`. Distinguish
+   ordinary errors from deliberate blockers; keep confirmation for risky work.
+2. **Name exact approvals.** Reply with the action approved, not "continue."
+   Scope approval rules to exact actions and put exceptions inside the rule.
+   Name routine, safely repeatable steps that need no approval.
+3. **Choose ownership deliberately.** Use the ownership sentence only when
+   structural improvements are wanted. Omit it for minimal changes to user-owned
+   code; a separate scope rule does not cancel it. Read the measured caveats
+   in the reference and review the diff, not just the final summary.
+4. **Ask for updates when a human watches.** Use the opening/update/recap block
+   and, if needed, the harness reminder. Without harness support, use the
+   every-few-tool-calls sentence. Expect some gaps even with both measures.
+5. **Audit delegation instructions first.** Only then change the spawn tool's
+   description if overdelegation persists. Put cost first, then when delegation
+   pays off and how to brief the subagent; check its default model and cost.
+6. **Make reports self-contained.** Add "Communicating clearly" after removing
+   unnecessary style constraints. Ask for any specific details or length needed.
+7. **Keep reasoning in thinking blocks.** Remove instructions to reproduce
+   internal reasoning in replies; use `display: "summarized"` to inspect it.
 
 ## Harness and API notes
 
-- Effort: default `high`. Sweep `low` through `max` on your own evals; names
-  don't map across models. `medium` roughly matches Fable 5 at lower cost.
+- Effort: explicitly start at `high` (API default); evaluate `medium` and
+  `xhigh`. `low`: quick, well-specified, high-volume work, including fast
+  subagents; `medium`: interactive coding/chat; `high`: hard coding, research,
+  long agentic runs. Most capability
+  gains are present at `high`; above it, gains are uneven. Reserve `xhigh` for
+  measured gains and `max` for ceiling tests or time/token-insensitive problems.
+  Rerun sweeps rather than carrying over Fable 5.1 or Opus 5.5 settings.
+- Effort controls thinking, latency, tokens, and tool calls, not reply length;
+  use prompts for length/tone. Route easy turns lower instead of saying think less.
+- Per-message effort changes preserve cache (beta
+  `mid-conversation-output-config-2026-07-01`, platform-dependent) and persist
+  until replaced. Changing top-level `effort` next request restarts the cache.
 - Progress: set `thinking.display: "updates"` (beta
-  `thinking-display-updates-2026-08-18`) or updates arrive empty. If your UI
-  hides tool output, tell the model in a turn-scoped system message.
-- Batching: after each tool-result turn, append the batch nudge as a
-  turn-scoped system message (`clear_at: "next_user_message"`, beta
-  `mid-conversation-system-clear-at-2026-08-21`). Leave earlier copies in place:
-  the API clears them at the next user message and they cost no input tokens,
-  while deleting them breaks the cache and thinking blocks.
-- History must be append-only. Return assistant turns exactly, thinking
-  included. Don't edit earlier turns, the system prompt, or tools mid-session;
-  use mid-conversation system messages. Editing a prefix can return a 400.
-- Client compaction: replace the whole history with one summary plus the new
-  user turn, using the compaction snippet. Try compacting later than before.
-- Subagents: have the spawn tool return immediately, deliver results in a later
-  user message, and give the lead a separate wait tool.
-- Vision: give a crop-and-zoom tool or a container with PIL/OpenCV.
-- `xhigh`/`max` long outputs: set `max_tokens` for thinking plus reply, and
-  append the long-output note.
+  `thinking-display-updates-2026-08-18`) or `"summarized"`; render non-empty
+  `thinking` blocks between tool calls, not only `text` blocks.
+- Count consecutive steps with neither `text` nor non-empty `thinking`, with
+  display enabled. After several, append the silence reminder after the latest
+  tool results as a turn-scoped system message (`clear_at: "next_user_message"`,
+  beta `mid-conversation-system-clear-at-2026-08-21`, where supported).
+  Leave every reminder unchanged in later `messages`; do not delete old copies.
+- Preserved thinking binds blocks to the prefix. Apart from context editing and
+  compaction, keep history append-only: changes to system, tools, or earlier
+  messages invalidate subsequent thinking. Messages API rejects by default;
+  Message Batches drops invalid blocks. Compaction must retain no earlier turns
+  after its summary. See the reference before using `"drop_block"` as a fallback.
+- Refusals: inspect `stop_reason: "refusal"` and `stop_details.category`:
+  `cyber`, `bio`, `frontier_llm`, `reasoning_extraction`, `general_harms`.
+  Benign cyber/bio work can trigger safeguards; use official verification and
+  fallback documentation, not bypass prompts. See reference links.
+
+## Migration removal checklist
+
+- Read inherited system prompts, skills, agent files, memories, notes, and
+  harness text. Remove unnecessary standing delegation instructions first.
+- Test without large prompt-written token budgets and remaining-token counters;
+  this is not guidance about the API task-budgets beta, which was not tested.
+- Replace prefix-editing harness code with append-only history, context editing,
+  or compaction; measure costs before accepting dropped thinking blocks.
+- Remove Opus 5.5 "treat that answer as done" / focus-on-new-message lines where
+  self-correction matters. They reduce follow-up thinking but suppress correction
+  of earlier mistakes; elsewhere, test self-correction before adopting them.
+- Remove think-less lines; lower effort instead. Remove rigid, unnecessary prose
+  rules before adding the report block.
+- Delete obsolete cautions; rewrite absolutes with scope, reason, and approval
+  exceptions inside the rule. Audit reviewer conditions and inter-agent notes.
+  If stuck, restart with trimmed memory/notes and keep the originals.
 
 ## Check before sending
 
-- Goal and done are clear; methodology is light.
-- Autonomy and scope snippets match whether a human is watching.
-- No compile-check phrasing or anti-narration lines.
+- Run the longest tasks; note early stops, unnecessary approvals, silence,
+  excess delegation, and additive code where restructuring was wanted.
+- Apply one behavior-specific change at a time; measure quality and token cost.
+- Confirmations still protect risky/irreversible actions; deliberate blockers
+  remain off limits. Do not work around a tool refusal.
