@@ -3,10 +3,10 @@
 Agent skills with model-specific prompting guidance, compatible with the
 [`skills`](https://github.com/vercel-labs/skills#readme) CLI.
 
-- `astra-prompting`: GPT-6 Astra
+- `astra-prompting`: GPT-6.2 Astra (with GPT-6 legacy notes)
 - `fable-prompting`: Claude Fable 5.2 (also Mythos 5.2)
 - `opus-prompting`: Claude Opus 5.5
-- `sol-prompting`: GPT-6 Sol
+- `sol-prompting`: GPT-6.2 Sol (with GPT-6 legacy notes)
 
 Each skill is a `SKILL.md` with drop-in wording in `references/snippets.md`.
 
