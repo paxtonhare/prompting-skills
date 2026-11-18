@@ -1,85 +1,64 @@
 ---
 name: sol-prompting
-description: Prompting guidance for GPT-6 Sol (gpt-6-sol, openai-codex/gpt-6-sol). Use when writing or revising a prompt, subagent task, system prompt, AGENTS.md, or skill that Sol will run, or when choosing between Sol and Astra for a task.
+description: Prompting guidance for GPT-6.2 Sol (gpt-6.2-sol), with legacy GPT-6 Sol caveats. Use when writing or revising a task prompt, subagent brief, system prompt, AGENTS.md, or skill that Sol will run, or when choosing between Sol and Astra.
 ---
 
-# Prompting GPT-6 Sol
+# Prompting GPT-6.2 Sol
 
-Sources, read 2026-09-25:
+[OpenAI's GPT-6.2 guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-6.2-astra)
+(read 2026-11-18) recommends Sol for complex work at lower cost and Astra for
+the most demanding tasks. Choose using your workload's quality, latency, and
+cost measurements.
 
-- https://developers.openai.com/api/docs/guides/latest-model (GPT-6 model guidance)
-- https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra
+## What applies to Sol
 
-## What the sources do and don't say
+OpenAI says the prompt examples address behavior seen when working with Astra
+and Sol and offers them as starting points for the GPT-6.2 family. The named
+behavior notes (including concise writing and pausing on ambiguity) describe
+Astra; the guide doesn't separately characterize Sol's defaults. Evaluate on
+Sol before borrowing a remedy for a symptom you saw on Astra. The [older Astra
+skills article](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra)
+discusses GPT-5.6 Sol's sustained follow-through; that is not evidence about
+GPT-6 or GPT-6.2 Sol.
 
-OpenAI publishes no Sol-specific behavior notes. The GPT-6 prompting section was
-written from observed GPT-6 Astra behavior and offered "as a starting point
-across the GPT-6 model family," to be evaluated per model and workload. So:
+## Write a task prompt
 
-- **Facts about Sol:** positioning, reasoning-effort support, API constraints
-  (below).
-- **Inference:** the Astra-specific fixes (anti-tentativeness, fewer questions,
-  less testing) may not apply to Sol. Add one only after you see the matching
-  failure on Sol.
-- The Astra blog's praise of "GPT-5.6 Sol" continuing for long stretches refers
-  to the previous generation. Do not assume it describes GPT-6 Sol.
+1. **Give the goal and finish line.** State why the outcome matters, what must
+   work, and what to inspect or run before stopping.
+2. **Give scope and authority.** Allow reversible assumptions within scope,
+   report material ones, and continue independent authorized work. Pause at
+   actual blockers, material scope decisions, or genuine approval gates, such
+   as destructive actions or unapproved external writes.
+3. **Name project conventions.** Reuse existing behavior where correct and keep
+   code readable. Run relevant checks and add tests when requested, required, or
+   needed for a concrete regression that current tests would miss.
+4. **Write for the reader.** Specify format, audience, and necessary detail,
+   rather than a blanket brevity rule. Ask for a self-contained final covering
+   outcome, evidence, and limits without requiring prior commentary.
+5. **Point to context by situation.** Say which docs apply to which changes.
 
-## When to pick Sol
+See [snippets](references/snippets.md) for short excerpts and untested examples.
+For shared skills and repo instructions, keep task-specific scaffolding in the
+brief. Flag contradictory owner policy rather than overriding it. Scoped
+permission does not supersede higher-priority instructions or repo gates.
 
-- `gpt-6-astra`: highest capability; long multi-step work across code, browsers,
-  and professional tools.
-- `gpt-6-sol`: strong reasoning on demanding tasks, at lower cost and latency.
-- `gpt-6-luna`: efficient, repeatable work at scale.
+## Responses API and migration
 
-Choose on the reasoning the task needs, latency, and cost.
-
-## Writing a task prompt
-
-Sol has less documented judgment than Astra, so be explicit rather than terse:
-
-1. **State the goal and why.** One or two sentences of intent.
-2. **Define done.** The finish line, including running and checking the result
-   when that matters.
-3. **Give constraints and authority.** What it may do without asking, and the
-   few real boundaries (destructive, irreversible, external).
-4. **Say how to verify.** Name the command or check. Keep it proportional to the
-   change.
-5. **Specify the output.** Format, length, and what to report back.
-6. **Point to context by situation.** "Use X for Y," not "read everything
-   first."
-
-If Sol then shows an Astra-like failure, pull the matching snippet from
-[references/snippets.md](references/snippets.md):
-
-| Symptom | Snippet |
-|---|---|
-| Stops to ask, offers a plan, or quits after a first pass | Initiative and follow-through |
-| A skill makes it pause or diverge | Instruction priority |
-| Over-formatted or slop-heavy writing | Writing style |
-| Over-tests small changes | Testing and verification |
-| Under-delegates in a multi-agent harness | Subagent delegation |
-
-## Skills and AGENTS.md shared with Astra
-
-Repo instructions guide every model that reads them. Extra scaffolding that
-helps Sol may overconstrain Astra. Put Sol-only guidance in the task prompt, not
-in shared AGENTS.md or skills. Keep shared skill descriptions short and precise
-about when they apply.
-
-## API and harness notes
-
-- Sol supports `none` reasoning effort (Astra does not). If migrating from
-  `minimal`, start at `low` and compare.
-- Function calling in Chat Completions works only with
-  `reasoning_effort: "none"`. Use the Responses API for reasoning with tools.
-- Remove `temperature`, `top_p`, and `top_logprobs` when effort is not `none`.
-- Change effort mid-conversation with a `configuration_update` input item;
-  keep request-level `reasoning.effort` fixed to preserve the prompt cache.
-- GPT-6 family features: async tool calling, mid-turn steering, prompt caching
-  with `prompt_cache_options.ttl`.
-
-## Check before sending
-
-- Goal, done, authority, verification, and output are all stated.
-- Astra-specific fixes are included only for failures you have seen on Sol.
-- Sol-only scaffolding stays out of shared repo instructions.
+- Put stable, reusable guidance in a `developer` message as the **first** item
+  in `input`. GPT-6.2 appends top-level `instructions` after `input`; use that
+  field only for guidance specific to the current request.
+- [Keep the prefix unchanged](https://developers.openai.com/api/docs/guides/keep-prefix-unchanged)
+  as settings change. Editing earlier developer messages or tool calls can drop
+  reasoning items and make the edited prefix ineligible for cache reuse. Certain
+  model changes (including downgrades), or a change of end user or organization,
+  can also drop reasoning items.
+- Start a new integration at `medium`; migrate `none` or `minimal` to `low`.
+  Use Responses for tool calling. Omit `temperature`, `top_p`, and `top_logprobs`;
+  omit `logprobs` in Chat Completions and remove `message.output_text.logprobs`
+  from Responses `include`.
+- From GPT-5.5 or earlier, migrate `prompt_cache_retention` to
+  `prompt_cache_options.ttl` set to `"30m"`; review the
+  [cache boundaries and billing](https://developers.openai.com/api/docs/guides/prompt-caching#summary-of-model-differences).
+- Earlier GPT-6 Sol supported `none` and limited Chat Completions function
+  calling to that effort. Keep that and older `configuration_update` recipes
+  version-specific; do not assume those rules apply to GPT-6.2.
